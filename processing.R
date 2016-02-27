@@ -43,6 +43,8 @@ prconf(fit2, testing); #    rf: 99% accuracy
 prconf(fit3, testing); #   gbm: 96% accuracy
 prconf(fit4, testing); #   lda: 70% accuracy
 
+cleanTest <- cleanData(finalTest);
+
 t1 <- predict(fit1, finalTest);
 t2 <- predict(fit2, finalTest);
 t3 <- predict(fit3, finalTest);

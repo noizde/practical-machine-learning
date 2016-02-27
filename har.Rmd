@@ -5,46 +5,79 @@ date: "February 27, 2016"
 output: html_document
 ---
 
-```{r loadData}
+This activity uses data from movement-measuring devices, taken from users asked to perform the Unilateral Dumbbell Biceps Curl in five different manners (encoded as "A" through "E"). Using this data, we aim to be able to correctly predict/classify (using new data) the manner in which future such movements are done.  
 
+We begin by loading the datasets and the Caret model training package.
+
+```{r loadData, cache = TRUE}
 library(caret);
-library(MASS);
 set.seed(772349);
 
 finalTest <- read.csv("data/pml-testing.csv");
 initTrain <- read.csv("data/pml-training.csv");
+```
 
+An exploratory look at the data shows that some cleaning is necessary before we can use them for training: some columns are irrelevant and may add unnecessary computations (e.g. user name and timestamp), while other columns have been encoded as discrete factor variables, rather than continuous numeric variables, which can distort the way the relationships between these variables are interpreted.
 
-inBuild <- createDataPartition(initTrain$classe, p = 2/3)[[1]];
-validation <- initTrain[-inBuild,]; 
-build <- initTrain[ inBuild,];
+The data also contain many blank values, and how to interpret them is not immediately obvious. Given the normal range of values, and that the distribution of NAs across the various measures did not seem to explicitly suggest any one classification or another, I chose to interpret NAs as denoting a negligible amount of movement for that measure, I chose to recode them to be zeroes.
 
-inTrain <- createDataPartition(build$classe, p = 2/3)[[1]];
-training <- build[inTrain,];
-testing <- build[-inTrain,];
+``` {r cleanData, cache = TRUE}
+cleanData <- function(data) {
+  # Remove X, user_name, raw_timestamp_part_1, raw_timestamp_part_2, cvtd_timestamp, new_window, num_window
+  df <- data[,-c(1:7)];
+  # Turn factor variables into numerics (apart from classe), turn NAs into 0s.
+  df <- cbind(apply(df[1:152], c(1,2), function(e){
+    n <- as.numeric(as.character(e));
+    if (is.na(n)) {
+      0
+    } else {
+      n
+    }
+  }), df[153]);
+}
 
-inSome <- createDataPartition(testing$classe, p = 1/20)[[1]];
-someTesting <- testing[inSome,]
+cleanTrain <- cleanData(initTrain);
+```
 
-l <- lda(formula = classe ~ ., data = training);
+Next, we eliminate the variables which don't significantly vary between observations (thus having limited explanatory value), which, on the other hand, significantly pares down the number of predictors to take into account for building our models. The "nzv" column (used later) holds a boolean vector of which columns we can exclude.
 
+[(Note: this does not apply in cases when the small variance *is* closely correlated with the statistic of interest, which does not seem to be so in this case)](http://www.r-bloggers.com/near-zero-variance-predictors-should-we-remove-them/)
+
+``` {r variance, cache = TRUE}
 nearZeroVarCols <- nearZeroVar(training, saveMetrics = TRUE);
+```
+
+``` {r}
+
+inTrain <- createDataPartition(cleanTrain$classe, p = 2/3)[[1]];
+training <- cleanTrain[inTrain,];
+testing <- cleanTrain[-inTrain,];
 
 training2 <- training[,!nearZeroVarCols$nzv];
-someTesting2 <- testing[inSome, !nearZeroVarCols$nzv];
 
-fit1 <- train(classe ~ ., data = training2, method = "rpart", na.action = na.pass, trControl = trainControl(method = "cv"));
-fit2 <- train(classe ~ ., data = training2, method = "rf", na.action = na.omit); # doesn't work with NAs
-fit3 <- train(classe ~ ., data = training2, method = "gbm", na.action = na.pass);
-fit4 <- train(classe ~ ., data = training2, method = "lda", na.action = na.pass);
+fit1 <- train(classe ~ ., data = training2, method = "rpart", trControl = trainControl(method = "cv", number = 3));
+fit2 <- train(classe ~ ., data = training2, method = "rf", trControl = trainControl(method = "cv", number = 3));
+fit3 <- train(classe ~ ., data = training2, method = "gbm", trControl = trainControl(method = "cv", number = 3));
+fit4 <- train(classe ~ ., data = training2, method = "lda", trControl = trainControl(method = "cv", number = 3));
 
-predict(fit1, newdata = training2, na.action = na.pass);
+prconf <- function(fit, data) {
+  pred <- predict(fit, newdata = data);
+  confusionMatrix(pred, data$classe);
+}
 
-pred1 <- predict(fit1, newdata = testing[,!nearZeroVarCols$nzv], na.action = na.pass);
-confusionMatrix(pred1, testing$classe);
+prconf(fit1, testing); # rpart: 49% accuracy
+prconf(fit2, testing); #    rf: 99% accuracy
+prconf(fit3, testing); #   gbm: 96% accuracy
+prconf(fit4, testing); #   lda: 70% accuracy
 
-pred2 <- predict(fit2, newdata = testing[,!nearZeroVarCols$nzv], na.action = na.omit);
-confusionMatrix(pred2, testing$classe);
+cleanTest <- cleanData(finalTest);
+
+t1 <- predict(fit1, finalTest);
+t2 <- predict(fit2, finalTest);
+t3 <- predict(fit3, finalTest);
+t4 <- predict(fit4, finalTest);
+
+finalPredictions <- data.frame(rpart = t1, lda = t4, gbm = t3, rf = t2);
 
 ```
 

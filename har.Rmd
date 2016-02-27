@@ -9,7 +9,7 @@ This activity uses data from movement-measuring devices, taken from users asked 
 
 We begin by loading the datasets and the Caret model training package.
 
-```{r loadData, cache = TRUE}
+```{r loadData}
 library(caret);
 set.seed(772349);
 
@@ -21,7 +21,7 @@ An exploratory look at the data shows that some cleaning is necessary before we 
 
 The data also contain many blank values, and how to interpret them is not immediately obvious. Given the normal range of values, and that the distribution of NAs across the various measures did not seem to explicitly suggest any one classification or another, I chose to interpret NAs as denoting a negligible amount of movement for that measure, I chose to recode them to be zeroes.
 
-``` {r cleanData, cache = TRUE}
+``` {r cleanData, cache = TRUE, warnings = FALSE}
 cleanData <- function(data) {
   # Remove X, user_name, raw_timestamp_part_1, raw_timestamp_part_2, cvtd_timestamp, new_window, num_window
   df <- data[,-c(1:7)];
@@ -50,29 +50,30 @@ nearZeroVarCols <- nearZeroVar(cleanTrain, saveMetrics = TRUE);
 Now that the data are in a more consistent state, we can partition the set into training and testing sets.
 
 ``` {r dividing, cache = TRUE}
-
 inTrain <- createDataPartition(cleanTrain$classe, p = 2/3)[[1]];
 training <- cleanTrain[inTrain, !nearZeroVarCols$nzv];
 testing <- cleanTrain[-inTrain, !nearZeroVarCols$nzv];
 ```
 
-``` {r fitting, cache = TRUE}
-fit1 <- train(classe ~ ., data = training2, method = "rpart", trControl = trainControl(method = "cv", number = 3));
-fit2 <- train(classe ~ ., data = training2, method = "rf", trControl = trainControl(method = "cv", number = 3));
-fit3 <- train(classe ~ ., data = training2, method = "gbm", trControl = trainControl(method = "cv", number = 3));
-fit4 <- train(classe ~ ., data = training2, method = "lda", trControl = trainControl(method = "cv", number = 3));
+We try four different models for the data: an rpart classification tree, a generalized boosted regression model combining multiple predictors, a linear discriminant analysis model looking at linear relationships between the predictors, and a random forest model using many bootstrapped trees to determine classification.
+
+```{r fitting, cache = FALSE, message=FALSE}
+fit1 <- train(classe ~ ., data = training, method = "rpart", trControl = trainControl(method = "cv", number = 3));
+fit2 <- train(classe ~ ., data = training, method = "gbm", trControl = trainControl(method = "cv", number = 3), verbose = FALSE); # gbm tends to print a lot of messages
+fit3 <- train(classe ~ ., data = training, method = "lda", trControl = trainControl(method = "cv", number = 3));
+fit4 <- train(classe ~ ., data = training, method = "rf", trControl = trainControl(method = "cv", number = 3));
 ```
 
-``` {r testing, cache = TRUE}
+``` {r testing, cache = FALSE}
 prconf <- function(fit, data) {
   pred <- predict(fit, newdata = data);
   confusionMatrix(pred, data$classe);
 }
 
 prconf(fit1, testing); # rpart: 49% accuracy
-prconf(fit2, testing); #    rf: 99% accuracy
-prconf(fit3, testing); #   gbm: 96% accuracy
-prconf(fit4, testing); #   lda: 70% accuracy
+prconf(fit2, testing); #   gbm: 96% accuracy
+prconf(fit3, testing); #   lda: 70% accuracy
+prconf(fit4, testing); #    rf: 99% accuracy
 
 ```
 

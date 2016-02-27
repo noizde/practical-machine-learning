@@ -55,7 +55,7 @@ training <- cleanTrain[inTrain, !nearZeroVarCols$nzv];
 testing <- cleanTrain[-inTrain, !nearZeroVarCols$nzv];
 ```
 
-We try four different models for the data: an rpart classification tree, a generalized boosted regression model combining multiple predictors, a linear discriminant analysis model looking at linear relationships between the predictors, and a random forest model using many bootstrapped trees to determine classification.
+We try four different models for the data: an rpart classification tree, a generalized boosted regression model combining multiple predictors, a linear discriminant analysis model looking at linear relationships between the predictors, and a random forest model using many bootstrapped trees to determine classification. Within each model, we specify it to use 3-fold cross validation of the supplied training set.
 
 ```{r fitting, cache = TRUE, message = FALSE}
 fit1 <- train(classe ~ ., data = training, method = "rpart", trControl = trainControl(method = "cv", number = 3));
@@ -64,18 +64,22 @@ fit3 <- train(classe ~ ., data = training, method = "lda", trControl = trainCont
 fit4 <- train(classe ~ ., data = training, method = "rf", trControl = trainControl(method = "cv", number = 3));
 ```
 
+We then make predictions with these models using data from the testing set, and construct confusion matrices for each, to see how accurate each model is for totally new data.
+
 ``` {r testing, cache = FALSE, message = FALSE}
 prconf <- function(fit, data) {
   pred <- predict(fit, newdata = data);
   confusionMatrix(pred, data$classe);
 }
 
-prconf(fit1, testing); # rpart: 56% accuracy
-prconf(fit2, testing); #   gbm: 96% accuracy
-prconf(fit3, testing); #   lda: 70% accuracy
-prconf(fit4, testing); #    rf: 99% accuracy
+prconf(fit1, testing); # rpart
+prconf(fit2, testing); # gbm
+prconf(fit3, testing); # lda
+prconf(fit4, testing); # rf
 
 ```
+
+According to the predictions, the rf and gbm models have accuracies 99% and 96%, respectively, which means they should be good classifiers for the final testing set that we will make predictions on. To get a feel for how well the four models agree with each other, we lay them out in a data frame, arranged by accuracy (least to greatest).
 
 ``` {r finalTesting}
 
@@ -87,8 +91,10 @@ t3 <- predict(fit3, finalTest); #   lda: 70% accuracy
 t4 <- predict(fit4, finalTest); #    rf: 99% accuracy
 
 finalPredictions <- data.frame(rpart = t1, lda = t3, gbm = t2, rf = t4);
-finalPredictions
-
 ```
 
-Conclusion.
+We then have our predictions for the actual testing set of the activity:
+
+``` {r finalPred}
+finalPredictions
+```

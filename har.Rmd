@@ -57,7 +57,7 @@ testing <- cleanTrain[-inTrain, !nearZeroVarCols$nzv];
 
 We try four different models for the data: an rpart classification tree, a generalized boosted regression model combining multiple predictors, a linear discriminant analysis model looking at linear relationships between the predictors, and a random forest model using many bootstrapped trees to determine classification.
 
-```{r fitting, cache = FALSE, message=FALSE}
+```{r fitting, cache = TRUE, message=FALSE}
 fit1 <- train(classe ~ ., data = training, method = "rpart", trControl = trainControl(method = "cv", number = 3));
 fit2 <- train(classe ~ ., data = training, method = "gbm", trControl = trainControl(method = "cv", number = 3), verbose = FALSE); # gbm tends to print a lot of messages
 fit3 <- train(classe ~ ., data = training, method = "lda", trControl = trainControl(method = "cv", number = 3));

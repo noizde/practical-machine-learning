@@ -1,0 +1,53 @@
+---
+title: "Human Activity Recognition"
+author: "Albert Dizon"
+date: "February 27, 2016"
+output: html_document
+---
+
+```{r loadData}
+
+library(caret);
+library(MASS);
+set.seed(772349);
+
+finalTest <- read.csv("data/pml-testing.csv");
+initTrain <- read.csv("data/pml-training.csv");
+
+
+inBuild <- createDataPartition(initTrain$classe, p = 2/3)[[1]];
+validation <- initTrain[-inBuild,]; 
+build <- initTrain[ inBuild,];
+
+inTrain <- createDataPartition(build$classe, p = 2/3)[[1]];
+training <- build[inTrain,];
+testing <- build[-inTrain,];
+
+inSome <- createDataPartition(testing$classe, p = 1/20)[[1]];
+someTesting <- testing[inSome,]
+
+l <- lda(formula = classe ~ ., data = training);
+
+nearZeroVarCols <- nearZeroVar(training, saveMetrics = TRUE);
+
+training2 <- training[,!nearZeroVarCols$nzv];
+someTesting2 <- testing[inSome, !nearZeroVarCols$nzv];
+
+fit1 <- train(classe ~ ., data = training2, method = "rpart", na.action = na.pass, trControl = trainControl(method = "cv"));
+fit2 <- train(classe ~ ., data = training2, method = "rf", na.action = na.omit); # doesn't work with NAs
+fit3 <- train(classe ~ ., data = training2, method = "gbm", na.action = na.pass);
+fit4 <- train(classe ~ ., data = training2, method = "lda", na.action = na.pass);
+
+predict(fit1, newdata = training2, na.action = na.pass);
+
+pred1 <- predict(fit1, newdata = testing[,!nearZeroVarCols$nzv], na.action = na.pass);
+confusionMatrix(pred1, testing$classe);
+
+pred2 <- predict(fit2, newdata = testing[,!nearZeroVarCols$nzv], na.action = na.omit);
+confusionMatrix(pred2, testing$classe);
+
+```
+
+Six young health participants were asked to perform one set of 10 repetitions of the Unilateral Dumbbell Biceps Curl in five different fashions: exactly according to the specification (Class A), throwing the elbows to the front (Class B), lifting the dumbbell only halfway (Class C), lowering the dumbbell only halfway (Class D) and throwing the hips to the front (Class E).
+
+Read more: http://groupware.les.inf.puc-rio.br/har#ixzz41I8p69o1

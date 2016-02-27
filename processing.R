@@ -1,5 +1,4 @@
 library(caret);
-library(MASS);
 set.seed(772349);
 
 finalTest <- read.csv("data/pml-testing.csv");
@@ -29,10 +28,10 @@ nearZeroVarCols <- nearZeroVar(training, saveMetrics = TRUE);
 
 training2 <- training[,!nearZeroVarCols$nzv];
 
-fit1 <- train(classe ~ ., data = training2, method = "rpart");
-fit2 <- train(classe ~ ., data = training2, method = "rf");
-fit3 <- train(classe ~ ., data = training2, method = "gbm");
-fit4 <- train(classe ~ ., data = training2, method = "lda");
+fit1 <- train(classe ~ ., data = training2, method = "rpart", trControl = trainControl(method = "cv", number = 3));
+fit2 <- train(classe ~ ., data = training2, method = "rf", trControl = trainControl(method = "cv", number = 3));
+fit3 <- train(classe ~ ., data = training2, method = "gbm", trControl = trainControl(method = "cv", number = 3));
+fit4 <- train(classe ~ ., data = training2, method = "lda", trControl = trainControl(method = "cv", number = 3));
 
 prconf <- function(fit, data) {
   pred <- predict(fit, newdata = data);

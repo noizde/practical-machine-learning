@@ -44,22 +44,26 @@ Next, we eliminate the variables which don't significantly vary between observat
 [(Note: this does not apply in cases when the small variance *is* closely correlated with the statistic of interest, which does not seem to be so in this case)](http://www.r-bloggers.com/near-zero-variance-predictors-should-we-remove-them/)
 
 ``` {r variance, cache = TRUE}
-nearZeroVarCols <- nearZeroVar(training, saveMetrics = TRUE);
+nearZeroVarCols <- nearZeroVar(cleanTrain, saveMetrics = TRUE);
 ```
 
-``` {r}
+Now that the data are in a more consistent state, we can partition the set into training and testing sets.
+
+``` {r dividing, cache = TRUE}
 
 inTrain <- createDataPartition(cleanTrain$classe, p = 2/3)[[1]];
-training <- cleanTrain[inTrain,];
-testing <- cleanTrain[-inTrain,];
+training <- cleanTrain[inTrain, !nearZeroVarCols$nzv];
+testing <- cleanTrain[-inTrain, !nearZeroVarCols$nzv];
+```
 
-training2 <- training[,!nearZeroVarCols$nzv];
-
+``` {r fitting, cache = TRUE}
 fit1 <- train(classe ~ ., data = training2, method = "rpart", trControl = trainControl(method = "cv", number = 3));
 fit2 <- train(classe ~ ., data = training2, method = "rf", trControl = trainControl(method = "cv", number = 3));
 fit3 <- train(classe ~ ., data = training2, method = "gbm", trControl = trainControl(method = "cv", number = 3));
 fit4 <- train(classe ~ ., data = training2, method = "lda", trControl = trainControl(method = "cv", number = 3));
+```
 
+``` {r testing, cache = TRUE}
 prconf <- function(fit, data) {
   pred <- predict(fit, newdata = data);
   confusionMatrix(pred, data$classe);
@@ -69,6 +73,10 @@ prconf(fit1, testing); # rpart: 49% accuracy
 prconf(fit2, testing); #    rf: 99% accuracy
 prconf(fit3, testing); #   gbm: 96% accuracy
 prconf(fit4, testing); #   lda: 70% accuracy
+
+```
+
+``` {r finalTesting}
 
 cleanTest <- cleanData(finalTest);
 
@@ -81,6 +89,4 @@ finalPredictions <- data.frame(rpart = t1, lda = t4, gbm = t3, rf = t2);
 
 ```
 
-Six young health participants were asked to perform one set of 10 repetitions of the Unilateral Dumbbell Biceps Curl in five different fashions: exactly according to the specification (Class A), throwing the elbows to the front (Class B), lifting the dumbbell only halfway (Class C), lowering the dumbbell only halfway (Class D) and throwing the hips to the front (Class E).
-
-Read more: http://groupware.les.inf.puc-rio.br/har#ixzz41I8p69o1
+Conclusion.
